@@ -1,0 +1,4 @@
+{% for item in usb_bind %}
+	ACTION=="add",    KERNEL=="{{item["kernel"]}}", SUBSYSTEMS=="usb", RUN+="/root/hotplug_add.sh {{item["bind_to"]}} $attr{idVendor} $attr{idProduct} $attr{busnum} $attr{devnum} /tmp/{{item["bind_to"]}}_{{item["kernel"]}}.xml"
+	ACTION=="remove", KERNEL=="{{item["kernel"]}}", SUBSYSTEMS=="usb", RUN+="/root/hotplug_remove.sh {{item["bind_to"]}} /tmp/{{item["bind_to"]}}_{{item["kernel"]}}.xml"
+{% endfor %}

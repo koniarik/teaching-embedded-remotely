@@ -1,0 +1,21 @@
+---
+- name: Setup webcams
+  hosts: cam_servers
+  tasks:
+    - name: install
+      apt:
+        name: [motion]
+        state: latest
+    - name: copy config
+      copy:
+        src: ./files/motion.conf
+        dest: /etc/motion/motion.conf
+    - name: copy def
+      copy:
+        src: ./files/def_motion
+        dest: /etc/default/motion
+    - name: start
+      systemd:
+        name: motion
+        state: restarted
+        enabled: yes

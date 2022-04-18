@@ -1,0 +1,51 @@
+---
+- name: setup hypervizors
+  hosts: hypervizors
+
+  tasks:
+    - name: Install packages
+      apt:
+        name: [vim, git, tree, libvirt-daemon, qemu-kvm, libvirt-daemon-system, tmux, avahi-daemon, avahi-utils, avahi-dnsconfd]
+        state: latest
+    - name: Enable avahi
+      systemd:
+        name: avahi-daemon
+        enabled: yes
+        state: started
+    - name: Enable virtualization
+      systemd:
+        name: libvirtd
+        enabled: yes
+        state: started
+    - name: Copy udev scripts
+      copy:
+        src: './files/{{item}}'
+        dest: '/root/{{item}}'
+        mode: a+x
+      loop:
+        - "hotplug_add.sh"
+        - "hotplug_remove.sh"
+    - name: Copy udev rules
+      template:
+        src: files/udev.rules.j2
+        dest: /etc/udev/rules.d/80-udev.rules
+    - name: Reset udev
+      systemd:
+        name: udev
+        state: restarted
+    - name: Copy base virtual image
+      copy:
+        src: files/mikasaXX.qcow2
+        dest: /var/lib/libvirt/images/mikasaXX.qcow2
+        owner: libvirt-qemu
+        group: kvm
+    - name: Copy base virtual def
+      copy:
+        src: files/mikasaXX.xml
+        dest: /var/lib/libvirt/mikasaXX.xml
+    - name: Undefine base virtual
+      shell: virsh undefine mikasaXX
+      ignore_errors: yes
+    - name: Define base virtual
+      shell: virsh define /var/lib/libvirt/mikasaXX.xml
+

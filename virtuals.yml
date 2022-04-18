@@ -1,0 +1,63 @@
+---
+- name: setup virtuals
+  hosts: virtuals
+  vars_files:
+    - vars/students.yml
+  handlers:
+    - name: register_certificate
+      shell: |
+        mkdir -p /etc/ldap/certs/
+        openssl x509 -in /root/CA.crt -out /etc/ldap/certs/CA.pem -inform DER -outform PEM
+        chmod u=rw,g=r,o=r /etc/ldap/certs/CA.pem
+        chown root:root /etc/ldap/certs/CA.pem
+  tasks:
+    - name: Install packages
+      apt:
+        name: [vim, git, tree, xrdp, screen, htop, glances, screen, dbus, libnm-dev, network-manager, python3-dbus, python-gi, nscd, libnss-ldap, ldap-utils, python3, python3-serial, python3-pygame]
+        state: latest
+    - name: Enable xrdp
+      systemd:
+        name: xrdp
+        enabled: yes
+        state: started
+    - name: Copy polkit settings
+      copy:
+        src: ./files/02-allow-colord.conf
+        dest:  /etc/polkit-1/localauthority.conf.d/02-allow-colord.conf
+        owner: root
+        mode: 644
+    - name: Add xrdp to ssl-cert group
+      user:
+        name: xrdp
+        groups: ssl-cert
+        append: yes
+    - name: Get FI cert
+      get_url:
+        url: https://faculty.website/CA.crt
+        dest: /root/CA.crt
+      notify:
+        - register_certificate
+    - name: Copy ldap.conf
+      copy:
+        src: ./files/ldap.conf
+        dest: /etc/ldap.conf
+    - name: Copy ldap/ldap.conf
+      copy:
+        src: ./files/ldap2.conf
+        dest: /etc/ldap/ldap.conf
+   - name: Setup nsswitch - passwd
+      lineinfile:
+        path: /etc/nsswitch.conf
+        regexp: '^passwd'
+        line: "passwd:         compat systemd ldap"
+    - name: Setup nsswitch - group
+      lineinfile:
+        path: /etc/nsswitch.conf
+        regexp: '^group'
+        line: "group:          compat systemd ldap"
+    - name: Add students
+      user:
+        name: "{{item}}"
+        groups: dialout
+        append: yes
+        shell: /bin/bash

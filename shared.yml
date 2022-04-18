@@ -1,0 +1,26 @@
+---
+- name: shared playbook
+  hosts: virtuals, hypervizors
+
+  tasks:
+    - hostname:
+        name: "{{ inventory_hostname }}"
+    - name: Disable password root login
+      lineinfile:
+        dest: /etc/ssh/sshd_config
+        regexp: '^#?PermitRootLogin'
+        line: 'PermitRootLogin without-password'
+    - name: Setup static IP
+      shell: |
+        nmcli con mod "Wired connection 1" ipv4.method manual
+
+        nmcli con mod "Wired connection 1" ipv4.addresses {{ansible_host}}/24
+
+        nmcli con mod "Wired connection 1" ipv4.gateway 192.168.1.1
+
+        nmcli con mod "Wired connection 1" ipv4.dns "8.8.8.8"
+    - name: Copy extra key
+      authorized_key:
+        user: root
+        state: present
+        key: "{{ lookup('file', './files/keys/extra.pub') }}"
